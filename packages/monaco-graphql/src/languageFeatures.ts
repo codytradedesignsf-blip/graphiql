@@ -23,13 +23,14 @@ export class DiagnosticsAdapter {
   private _disposables: monaco.IDisposable[] = [];
   private _listener: { [uri: string]: monaco.IDisposable } =
     Object.create(null);
+  private _timeouts: { [uri: string]: ReturnType<typeof setTimeout> } =
+    Object.create(null);
 
   constructor(
     private defaults: MonacoGraphQLAPI,
     private _worker: WorkerAccessor,
   ) {
     this._worker = _worker;
-    let onChangeTimeout: ReturnType<typeof setTimeout>;
     const onModelAdd = (model: editor.IModel): void => {
       const modeId = getModelLanguageId(model);
       if (modeId !== this.defaults.languageId) {
@@ -44,13 +45,13 @@ export class DiagnosticsAdapter {
       const jsonValidationForModel =
         defaults.diagnosticSettings.validateVariablesJSON?.[modelUri];
       // once on adding a model, this is also fired when schema or other config changes
-      onChangeTimeout = setTimeout(() => {
+      this._timeouts[modelUri] = setTimeout(() => {
         void this._doValidate(model.uri, modeId, jsonValidationForModel);
       }, 400);
 
       this._listener[modelUri] = model.onDidChangeContent(() => {
-        clearTimeout(onChangeTimeout);
-        onChangeTimeout = setTimeout(() => {
+        clearTimeout(this._timeouts[modelUri]);
+        this._timeouts[modelUri] = setTimeout(() => {
           void this._doValidate(model.uri, modeId, jsonValidationForModel);
         }, 400);
       });
@@ -65,13 +66,22 @@ export class DiagnosticsAdapter {
         listener.dispose();
         delete this._listener[uriStr];
       }
+
+      // Clean up timeout for this model
+      if (this._timeouts[uriStr]) {
+        clearTimeout(this._timeouts[uriStr]);
+        delete this._timeouts[uriStr];
+      }
     };
 
     this._disposables.push(
       editor.onDidCreateModel(onModelAdd),
       {
-        dispose() {
-          clearTimeout(onChangeTimeout);
+        dispose: () => {
+          // Clear all timeouts on dispose
+          for (const uri of Object.keys(this._timeouts)) {
+            clearTimeout(this._timeouts[uri]);
+          }
         },
       },
       editor.onWillDisposeModel(model => {

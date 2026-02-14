@@ -148,13 +148,15 @@ function validateValue(
 
     // Validate each field in the input object.
     const providedFields = Object.create(null);
+    // Cache getFields() result to avoid multiple calls
+    const typeFields = type.getFields();
     const fieldErrors: any[][] = mapCat(
       (valueAST as ParseObjectOutput).members,
       member => {
         // TODO: Can't figure out the right type here
         const fieldName = member?.key?.value;
         providedFields[fieldName] = true;
-        const inputField = type.getFields()[fieldName];
+        const inputField = typeFields[fieldName];
         if (!inputField) {
           return [
             [
@@ -169,8 +171,8 @@ function validateValue(
     );
 
     // Look for missing non-nullable fields.
-    for (const fieldName of Object.keys(type.getFields())) {
-      const field = type.getFields()[fieldName];
+    for (const fieldName of Object.keys(typeFields)) {
+      const field = typeFields[fieldName];
       if (
         !providedFields[fieldName] &&
         field.type instanceof GraphQLNonNull &&

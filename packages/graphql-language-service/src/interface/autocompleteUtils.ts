@@ -19,6 +19,9 @@ import {
 import { CompletionItemBase } from '../types';
 import { ContextTokenUnion } from '../parser';
 
+// Cache regex for performance
+const NON_WORD_REGEX = /\W/g;
+
 export function objectValues<T>(object: Record<string, T>): Array<T> {
   const keys = Object.keys(object);
   const len = keys.length;
@@ -52,15 +55,24 @@ function filterAndSortList<T extends CompletionItemBase>(
     return filterNonEmpty<T>(list, entry => !entry.isDeprecated);
   }
 
-  const byProximity = list.map(entry => ({
-    proximity: getProximity(normalizeText(entry.label), text),
-    entry,
-  }));
+  // Optimize: single pass to calculate all proximities and filter
+  const allProximities: Array<{ proximity: number; entry: T }> = [];
+  const closeMatches: Array<{ proximity: number; entry: T }> = [];
+  
+  for (let i = 0; i < list.length; i++) {
+    const entry = list[i];
+    const proximity = getProximity(normalizeText(entry.label), text);
+    const item = { proximity, entry };
+    allProximities.push(item);
+    if (proximity <= 2) {
+      closeMatches.push(item);
+    }
+  }
 
-  return filterNonEmpty(
-    filterNonEmpty(byProximity, pair => pair.proximity <= 2),
-    pair => !pair.entry.isDeprecated,
-  )
+  // Use close matches if available, otherwise use all
+  const itemsToSort = closeMatches.length > 0 ? closeMatches : allProximities;
+
+  return filterNonEmpty(itemsToSort, pair => !pair.entry.isDeprecated)
     .sort(
       (a, b) =>
         (a.entry.isDeprecated ? 1 : 0) - (b.entry.isDeprecated ? 1 : 0) ||
@@ -81,7 +93,7 @@ function filterNonEmpty<T>(
 }
 
 function normalizeText(text: string): string {
-  return text.toLowerCase().replaceAll(/\W/g, '');
+  return text.toLowerCase().replaceAll(NON_WORD_REGEX, '');
 }
 
 // Determine a numeric proximity for a suggestion based on current text.

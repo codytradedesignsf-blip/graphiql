@@ -156,6 +156,9 @@ export function getAutocompleteSuggestions(
 
   const { kind, step, prevState } = state;
 
+  // Cache schema type map for performance - avoids repeated calls
+  const typeMap = schema.getTypeMap();
+
   // Definition kinds
   if (kind === RuleKinds.DOCUMENT) {
     if (mode === GraphQLDocumentMode.TYPE_SYSTEM) {
@@ -182,7 +185,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.SCALAR_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(isScalarType)
         .map(type => ({
           label: type.name,
@@ -195,7 +198,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.OBJECT_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(type => isObjectType(type) && !type.name.startsWith('__'))
         .map(type => ({
           label: type.name,
@@ -208,7 +211,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.INTERFACE_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(isInterfaceType)
         .map(type => ({
           label: type.name,
@@ -221,7 +224,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.UNION_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(isUnionType)
         .map(type => ({
           label: type.name,
@@ -234,7 +237,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.ENUM_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(type => isEnumType(type) && !type.name.startsWith('__'))
         .map(type => ({
           label: type.name,
@@ -247,7 +250,7 @@ export function getAutocompleteSuggestions(
   if (prevState?.kind === Kind.INPUT_OBJECT_TYPE_EXTENSION) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(isInputObjectType)
         .map(type => ({
           label: type.name,
@@ -389,7 +392,7 @@ export function getAutocompleteSuggestions(
   if (unwrappedState.kind === RuleKinds.FIELD_DEF) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(type => isOutputType(type) && !type.name.startsWith('__'))
         .map(type => ({
           label: type.name,
@@ -404,7 +407,7 @@ export function getAutocompleteSuggestions(
   if (unwrappedState.kind === RuleKinds.INPUT_VALUE_DEF && step === 2) {
     return hintList(
       token,
-      Object.values(schema.getTypeMap())
+      Object.values(typeMap)
         .filter(type => isInputType(type) && !type.name.startsWith('__'))
         .map(type => ({
           label: type.name,
