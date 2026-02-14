@@ -55,24 +55,22 @@ function filterAndSortList<T extends CompletionItemBase>(
     return filterNonEmpty<T>(list, entry => !entry.isDeprecated);
   }
 
-  // Optimize: combine map+filter into single pass
-  const byProximity: Array<{ proximity: number; entry: T }> = [];
+  // Optimize: single pass to calculate all proximities and filter
+  const allProximities: Array<{ proximity: number; entry: T }> = [];
+  const closeMatches: Array<{ proximity: number; entry: T }> = [];
+  
   for (let i = 0; i < list.length; i++) {
     const entry = list[i];
     const proximity = getProximity(normalizeText(entry.label), text);
+    const item = { proximity, entry };
+    allProximities.push(item);
     if (proximity <= 2) {
-      byProximity.push({ proximity, entry });
+      closeMatches.push(item);
     }
   }
 
-  // If no matches, fallback to all entries with proximity
-  const itemsToSort =
-    byProximity.length === 0
-      ? list.map(entry => ({
-          proximity: getProximity(normalizeText(entry.label), text),
-          entry,
-        }))
-      : byProximity;
+  // Use close matches if available, otherwise use all
+  const itemsToSort = closeMatches.length > 0 ? closeMatches : allProximities;
 
   return filterNonEmpty(itemsToSort, pair => !pair.entry.isDeprecated)
     .sort(

@@ -751,11 +751,8 @@ function getSuggestionsForFragmentTypeConditions(
       // they implement.
       const possibleObjTypes = schema.getPossibleTypes(abstractType);
       const possibleIfaceMap = Object.create(null);
-      // Optimize: Single pass to collect all unique interfaces
       for (const type of possibleObjTypes) {
-        const interfaces = type.getInterfaces();
-        for (let i = 0; i < interfaces.length; i++) {
-          const iface = interfaces[i];
+        for (const iface of type.getInterfaces()) {
           possibleIfaceMap[iface.name] = iface;
         }
       }
