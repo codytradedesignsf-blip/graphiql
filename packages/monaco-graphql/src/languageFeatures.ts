@@ -79,9 +79,9 @@ export class DiagnosticsAdapter {
       {
         dispose: () => {
           // Clear all timeouts on dispose
-          Object.keys(this._timeouts).forEach(uri => {
+          for (const uri of Object.keys(this._timeouts)) {
             clearTimeout(this._timeouts[uri]);
-          });
+          }
         },
       },
       editor.onWillDisposeModel(model => {
